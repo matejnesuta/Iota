@@ -22,4 +22,7 @@ re:
 	$(MAKE) fclean
 	$(MAKE) all
 
-.PHONY: clean fclean re
+tests: $(NAME)
+	./$(NAME) tests
+
+.PHONY: clean fclean re tests

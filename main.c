@@ -13,97 +13,7 @@
 #include <unistd.h>
 
 #include "main.h"
-
-#define PARSE_SUCCESS 0
-#define PARSE_FAIL -1
-
-// enum terminalType { integer, character };
-
-// typedef struct {
-//     int type;
-//     int value;
-// } terminal;
-
-int testHandler(char* input) {
-    int result;
-    if (queryNonterminal(&input, &result)) {
-        return PARSE_FAIL;
-    } else {
-        printf("The calculated result was: %d.\n", result);
-        return PARSE_SUCCESS;
-    }
-}
-
-void parserTests() {
-    if (testHandler("") == PARSE_FAIL) {
-        printf("empty: ok\n");
-    } else {
-        printf("empty: fail\n");
-    }
-    if (testHandler("      ") == PARSE_FAIL) {
-        printf("whitespaces: ok\n");
-    } else {
-        printf("whitespaces: fail\n");
-    }
-    printf("\nsmokes:\n");
-    if (testHandler("(* 4 5)") == PARSE_SUCCESS) {
-        printf("multiplication: ok\n");
-    } else {
-        printf("multiplication: fail\n");
-    }
-    if (testHandler("(+ 4 5)") == PARSE_SUCCESS) {
-        printf("addition: ok\n");
-    } else {
-        printf("addition: fail\n");
-    }
-    if (testHandler("(- 4 5)") == PARSE_SUCCESS) {
-        printf("subtraction: ok\n");
-    } else {
-        printf("subtraction: fail\n");
-    }
-    if (testHandler("(/ 4 5)") == PARSE_SUCCESS) {
-        printf("division: ok\n");
-    } else {
-        printf("division: fail\n");
-    }
-    printf("\nspaces:\n");
-    if (testHandler("    (* 4 5)") == PARSE_SUCCESS) {
-        printf("spaces 1: ok\n");
-    } else {
-        printf("spaces 1: fail\n");
-    }
-    if (testHandler("(   *    4   5   )     ") == PARSE_SUCCESS) {
-        printf("spaces 2: ok\n");
-    } else {
-        printf("spaces 2: fail\n");
-    }
-    printf("\ncomplex:\n");
-    if (testHandler("(   *    (* 4 5)  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex: ok\n");
-    } else {
-        printf("complex: fail\n");
-    }
-    if (testHandler("(   *    (* 4 5  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex 2: fail\n");
-    } else {
-        printf("complex 2: ok\n");
-    }
-    if (testHandler("(   *    * 4 5)  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex 3: fail\n");
-    } else {
-        printf("complex 3: ok\n");
-    }
-    if (testHandler("(   *    (* 45)  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex 4: fail\n");
-    } else {
-        printf("complex 4: ok\n");
-    }
-    if (testHandler("(*(/ 4 0) (* 4 5))") == PARSE_SUCCESS) {
-        printf("zero division: fail\n");
-    } else {
-        printf("zero division: ok\n");
-    }
-}
+#include "tests.c"
 
 void cleanSpaces(char** cursor) {
     while (*cursor[0] == ' ') {
@@ -164,7 +74,7 @@ int exprNonterminal(char** cursor, int* result) {
         } else {
             return PARSE_SUCCESS;
         }
-    } else if (*cursor[0] >= '0' && *cursor[0] <= '9') {
+    } else if ((*cursor[0] >= '0' && *cursor[0] <= '9') || *cursor[0] == '-') {
         *result = strtol(*cursor, cursor, 10);
         // printf("%d\n", number);
         return PARSE_SUCCESS;
@@ -218,6 +128,14 @@ void argparse(int argc,
               struct hostent** server,
               long* port,
               int* tcp_mode) {
+    // TO BE DELETED (for testing purposes only)
+    if (argc == 2) {
+        if (!strcmp("tests", argv[1])) {
+            parserTests();
+            exit(0);
+        }
+    }
+
     if (argc != 7) {
         errprint("Wrong number of arguments. Exiting.\n");
         exit(1);
@@ -266,7 +184,6 @@ int main(int argc, char* argv[]) {
     long port = -1;
 
     argparse(argc, argv, &server, &port, &tcp_mode);
-    parserTests();
     // struct sockaddr_in server_address;
 
     // /* Taken from the stub:

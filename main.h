@@ -3,6 +3,9 @@
 
 #include <netdb.h>
 
+#define PARSE_SUCCESS 0
+#define PARSE_FAIL -1
+
 typedef struct {
     int type;
     int value;
@@ -10,7 +13,6 @@ typedef struct {
 
 void cleanSpaces(char**);
 void errprint(char*);
-void parserTests();
 
 int evaluation(char, int, int, int*);
 int exprNonterminal(char**, int*);
