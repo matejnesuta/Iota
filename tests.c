@@ -58,7 +58,7 @@ void parserTests() {
         printf("spaces 2: fail\n");
     }
     printf("\ncomplex:\n");
-    if (testHandler("(   *    (* 4 5)  (* 4 5) )     ") == PARSE_SUCCESS) {
+    if (testHandler("(   +    (* 4 5)  (* 4 5) )     ") == PARSE_SUCCESS) {
         printf("complex: ok\n");
     } else {
         printf("complex: fail\n");
