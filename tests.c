@@ -5,7 +5,7 @@
 
 int testHandler(char* input) {
     int result;
-    if (queryNonterminal(&input, &result)) {
+    if (startParsing(input, &result)) {
         return PARSE_FAIL;
     } else {
         printf("The calculated result was: %d.\n", result);
@@ -14,93 +14,74 @@ int testHandler(char* input) {
 }
 
 void parserTests() {
+    int return_code = 0;
     printf("\n//////// PARSER TESTS ////////\n");
-    if (testHandler("") == PARSE_FAIL) {
-        printf("empty: ok\n");
-    } else {
-        printf("empty: fail\n");
+
+    printf("\ninvalid inputs:\n\n");
+
+    char invalid_inputs[13][50] = {"",
+                                   "      ",
+                                   "     (* 4 5)",
+                                   "(+ 1)",
+                                   "(   *    4   5   )     ",
+                                   "(   +    (* 4 5)  (* 4 5) )     ",
+                                   "(   *    (* 4 5  (* 4 5) )     ",
+                                   "(   *    (* 45)  (* 4 5) )     ",
+                                   "(*(/ 4 0) (* 4 5))",
+                                   "(* -4 5)",
+                                   "(* --4 5)",
+                                   "(* - 4 5)",
+                                   "(*(/ 4 4))HELLO"};
+
+    for (int i = 0; i < 13; i++) {
+        if (testHandler(invalid_inputs[i]) == PARSE_FAIL) {
+            printf("\"%s\": OK\n\n", invalid_inputs[i]);
+        } else {
+            fprintf(stderr, "\"%s\": FAIL\n\n", invalid_inputs[i]);
+            return_code = 1;
+        }
     }
-    if (testHandler("      ") == PARSE_FAIL) {
-        printf("whitespaces: ok\n");
-    } else {
-        printf("whitespaces: fail\n");
+
+    printf("\nvalid inputs:\n\n");
+
+    char valid_inputs[30][50] = {"(+ 2 2)",
+                                 "(* 3 4)",
+                                 "(/ 10 2)",
+                                 "(- 8 5)",
+                                 "(* 2 3 4)",
+                                 "(- 7 3 1)",
+                                 "(+ 5 (* 3 2))",
+                                 "(/ 16 2 2)",
+                                 "(+ 1 (/ 5 5))",
+                                 "(- 10 (/ 20 2))",
+                                 "(* 2 3 4 5)",
+                                 "(/ 100 2 2 5)",
+                                 "(+ 1 (* 2 3) (/ 4 2))",
+                                 "(- 12 4 2 1)",
+                                 "(* 1 2 3 4 5)",
+                                 "(/ 1000 5 2 2 5)",
+                                 "(+ 2 (* 3 4) (- 10 6))",
+                                 "(- 100 50 20 10)",
+                                 "(* 2 (+ 3 4) (- 5 1))",
+                                 "(/ 200 (+ 100 50) (* 2 2))",
+                                 "(* (- 4 2) (+ 3 4) (/ 10 2))",
+                                 "(- (* 3 4) (* 5 2) (/ 12 3))",
+                                 "(+ (* 2 3) (/ 8 2) (- 10 6))",
+                                 "(* (- 5 2) (+ 1 2 3) (/ 18 3))",
+                                 "(/ (- 10 6) (+ 1 2 3) (* 3 4))",
+                                 "(- (* 2 3 4) (/ 16 2) (+ 5 4))",
+                                 "(+ (/ 10 2) (* (- 3 4) (+ 1 2)))",
+                                 "(* (+ 3 4 5) (- 8 6) (/ 20 4))",
+                                 "(/ (* 2 3 4) (- 10 5) (+ 2 2 2))",
+                                 "(- (/ 12 3) (* 2 3) (+ 7 1))"};
+
+    for (int i = 0; i < 30; i++) {
+        if (testHandler(valid_inputs[i]) != PARSE_FAIL) {
+            printf("\"%s\": OK\n\n", valid_inputs[i]);
+        } else {
+            fprintf(stderr, "\"%s\": FAIL\n\n", valid_inputs[i]);
+            return_code = 1;
+        }
     }
-    printf("\nsmokes:\n");
-    if (testHandler("(* 4 5)") == PARSE_SUCCESS) {
-        printf("multiplication: ok\n");
-    } else {
-        printf("multiplication: fail\n");
-    }
-    if (testHandler("(+ 4 5)") == PARSE_SUCCESS) {
-        printf("addition: ok\n");
-    } else {
-        printf("addition: fail\n");
-    }
-    if (testHandler("(- 4 5)") == PARSE_SUCCESS) {
-        printf("subtraction: ok\n");
-    } else {
-        printf("subtraction: fail\n");
-    }
-    if (testHandler("(/ 4 5)") == PARSE_SUCCESS) {
-        printf("division: ok\n");
-    } else {
-        printf("division: fail\n");
-    }
-    printf("\nspaces:\n");
-    if (testHandler("    (* 4 5)") == PARSE_SUCCESS) {
-        printf("spaces 1: ok\n");
-    } else {
-        printf("spaces 1: fail\n");
-    }
-    if (testHandler("(   *    4   5   )     ") == PARSE_SUCCESS) {
-        printf("spaces 2: ok\n");
-    } else {
-        printf("spaces 2: fail\n");
-    }
-    printf("\ncomplex:\n");
-    if (testHandler("(   +    (* 4 5)  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex: ok\n");
-    } else {
-        printf("complex: fail\n");
-    }
-    if (testHandler("(   *    (* 4 5  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex 2: fail\n");
-    } else {
-        printf("complex 2: ok\n");
-    }
-    if (testHandler("(   *    * 4 5)  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex 3: fail\n");
-    } else {
-        printf("complex 3: ok\n");
-    }
-    if (testHandler("(   *    (* 45)  (* 4 5) )     ") == PARSE_SUCCESS) {
-        printf("complex 4: fail\n");
-    } else {
-        printf("complex 4: ok\n");
-    }
-    if (testHandler("(*(/ 4 0) (* 4 5))") == PARSE_SUCCESS) {
-        printf("zero division: fail\n");
-    } else {
-        printf("zero division: ok\n");
-    }
-    if (testHandler("(* -4 5)") == PARSE_SUCCESS) {
-        printf("negative number: ok\n");
-    } else {
-        printf("negative number: fail\n");
-    }
-    if (testHandler("(* --4 5)") != PARSE_SUCCESS) {
-        printf("wrong negative number: ok\n");
-    } else {
-        printf("wrong negative number: fail\n");
-    }
-    if (testHandler("(* - 4 5)") != PARSE_SUCCESS) {
-        printf("wrong negative number 2: ok\n");
-    } else {
-        printf("wrong negative number 2: fail\n");
-    }
-    if (testHandler("(*(/ 4 4))HELLO") == PARSE_SUCCESS) {
-        printf("trailing characters: fail\n");
-    } else {
-        printf("trailing characters: ok\n");
-    }
+    exit(return_code);
 }

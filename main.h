@@ -11,13 +11,12 @@ typedef struct {
     int value;
 } terminal;
 
-void cleanSpaces(char**);
 void errprint(char*);
 int startParsing(char*, int*);
 int evaluation(char, int, int, int*);
 int exprNonterminal(char**, int*);
 int operatorNonterminal(char**, char*);
-int spaceNonterminal(char**);
+int spaceTerminal(char**);
 int queryNonterminal(char**, int*);
 
 #endif

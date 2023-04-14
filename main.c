@@ -13,19 +13,13 @@
 #include <unistd.h>
 
 #include "main.h"
-#include "tests.c"
+#include "tests.h"
 
+// #define testing
 #define BUFSIZE 1024
 // sources:
 // https://www.geeksforgeeks.org/recursive-descent-parser/?ref=lbp
 // https://linux.die.net/man/3/inet_aton
-
-void cleanSpaces(char** cursor) {
-    while (*cursor[0] == ' ') {
-        (*cursor)++;
-    }
-    return;
-}
 
 int evaluation(char operation, int operand1, int operand2, int* result) {
     switch (operation) {
@@ -52,12 +46,12 @@ int evaluation(char operation, int operand1, int operand2, int* result) {
     return PARSE_SUCCESS;
 }
 
-int spaceNonterminal(char** cursor) {
+// TODO: rename to terminal
+int spaceTerminal(char** cursor) {
     if (*cursor[0] != ' ') {
         return PARSE_FAIL;
     }
     (*cursor)++;
-    cleanSpaces(cursor);
     return PARSE_SUCCESS;
 }
 
@@ -76,6 +70,9 @@ int startParsing(char* cursor, int* result) {
     if (queryNonterminal(&cursor, result)) {
         return PARSE_FAIL;
     } else {
+        if (cursor[0] != '\0') {
+            return PARSE_FAIL;
+        }
         return PARSE_SUCCESS;
     }
 }
@@ -87,12 +84,35 @@ int exprNonterminal(char** cursor, int* result) {
         } else {
             return PARSE_SUCCESS;
         }
-    } else if ((*cursor[0] >= '0' && *cursor[0] <= '9') || *cursor[0] == '-') {
+    } else if ((*cursor[0] >= '0' && *cursor[0] <= '9')) {
         *result = strtol(*cursor, cursor, 10);
-        // printf("%d\n", number);
         return PARSE_SUCCESS;
     } else {
         return PARSE_FAIL;
+    }
+}
+
+int nextExpNonterminal(char** cursor, int* result, char operator) {
+    if (*cursor[0] == ')') {
+        (*cursor)++;
+        return PARSE_SUCCESS;
+    } else if (spaceTerminal(cursor)) {
+        return PARSE_FAIL;
+    }
+    int operand2;
+
+    if (exprNonterminal(cursor, &operand2)) {
+        return PARSE_FAIL;
+    }
+
+    if (evaluation(operator, * result, operand2, result)) {
+        return PARSE_FAIL;
+    }
+
+    if (nextExpNonterminal(cursor, result, operator)) {
+        return PARSE_FAIL;
+    } else {
+        return PARSE_SUCCESS;
     }
 }
 
@@ -100,33 +120,29 @@ int queryNonterminal(char** cursor, int* result) {
     char operator;
     int operand1;
     int operand2;
-    cleanSpaces(cursor);
     if (*cursor[0] != '(') {
         return PARSE_FAIL;
     }
     (*cursor)++;
-    cleanSpaces(cursor);
     if (operatorNonterminal(cursor, &operator)) {
         return PARSE_FAIL;
     }
-    if (spaceNonterminal(cursor)) {
+    if (spaceTerminal(cursor)) {
         return PARSE_FAIL;
     }
     if (exprNonterminal(cursor, &operand1)) {
         return PARSE_FAIL;
     }
-    if (spaceNonterminal(cursor)) {
+    if (spaceTerminal(cursor)) {
         return PARSE_FAIL;
     }
     if (exprNonterminal(cursor, &operand2)) {
         return PARSE_FAIL;
     }
-    cleanSpaces(cursor);
-    if (*cursor[0] != ')') {
+    if (evaluation(operator, operand1, operand2, result)) {
         return PARSE_FAIL;
     }
-    (*cursor)++;
-    if (evaluation(operator, operand1, operand2, result)) {
+    if (nextExpNonterminal(cursor, result, operator)) {
         return PARSE_FAIL;
     }
     return PARSE_SUCCESS;
@@ -141,14 +157,6 @@ void argparse(int argc,
               struct in_addr* addr,
               long* port,
               int* tcp_mode) {
-    // TO BE DELETED (for testing purposes only)
-    if (argc == 2) {
-        if (!strcmp("tests", argv[1])) {
-            parserTests();
-            exit(0);
-        }
-    }
-
     if (argc != 7) {
         errprint("Wrong number of arguments. Exiting.\n");
         exit(1);
@@ -202,6 +210,9 @@ void prepareUDPErrResponse(char (*buf)[BUFSIZE]) {
 }
 
 int main(int argc, char* argv[]) {
+#ifdef TESTING
+    parserTests();
+#endif
     // This is set to 0 when UDP mode or to 1 when the TCP mode is used.
     int tcp_mode = -1;
     struct in_addr addr;  // This is set tu NULL due to the IP address
@@ -270,8 +281,6 @@ int main(int argc, char* argv[]) {
                 sprintf(buf + 3, "%d", result);
                 buf[2] = strlen(buf + 3);
             }
-
-            //(* 4 5)
         }
 
         // }
