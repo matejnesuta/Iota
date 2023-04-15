@@ -1,4 +1,5 @@
 .vscode
 ipkcpd
-*.vg
 *.o
+vgcore.
+tests

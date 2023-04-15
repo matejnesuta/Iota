@@ -16,11 +16,13 @@
 #include "main.h"
 #include "tests.h"
 
-// #define testing
+#define MAX_CLIENTS 30
+
 #define BUFSIZE 1024
 // sources:
 // https://www.geeksforgeeks.org/recursive-descent-parser/?ref=lbp
 // https://linux.die.net/man/3/inet_aton
+// https://www.binarytides.com/multiple-socket-connections-fdset-select-linux/
 
 int evaluation(char operation, int operand1, int operand2, int* result) {
     switch (operation) {
@@ -201,6 +203,26 @@ void argparse(int argc,
     }
 }
 
+int caseInsensitiveStrcmp(char* string1, char* string2) {
+    size_t length = strlen(string1);
+    if (length != strlen(string2)) {
+        return -1;
+    } else {
+        for (size_t x = 0; x < length; x++) {
+            if (string1[x] >= 'a' && string1[x] <= 'z') {
+                string1[x] -= 32;
+            } else if (string2[x] >= 'a' && string2[x] <= 'z') {
+                string2[x] -= 32;
+            }
+        }
+        if (strcmp(string1, string2) != 0) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+}
+
 void prepareUDPErrResponse(char (*buf)[BUFSIZE], char* message) {
     bzero(*buf, BUFSIZE);
     strcpy((*buf) + 3, message);
@@ -208,6 +230,13 @@ void prepareUDPErrResponse(char (*buf)[BUFSIZE], char* message) {
     (*buf)[1] = '\001';
     (*buf)[2] = strlen((*buf) + 3);
     return;
+}
+
+void closeTCPConnection(int sd, int* socket, int* state) {
+    send(sd, "BYE\n", 4, 0);
+    close(sd);
+    *socket = 0;
+    *state = 0;
 }
 
 int udp_mode(struct sockaddr_in server_address, int server_socket) {
@@ -276,17 +305,17 @@ int udp_mode(struct sockaddr_in server_address, int server_socket) {
 }
 
 int tcp_mode(struct sockaddr_in server_address, int server_socket) {
-    int addrlen, new_socket, client_socket[30], max_clients = 30, activity, i,
-                                                valread, sd;
+    int addrlen, new_socket, client_socket[30], activity, i, valread, sd;
     int max_sd;
-    char buffer[1025];  // data buffer of 1K
+
+    int client_state[MAX_CLIENTS] = {0};
+    enum State { uninit = 0, init = 1, established = 2 };
+
     // set of socket descriptors
     fd_set readfds;
-    // a message
-    char* message = "ECHO Daemon v1.0 \r\n";
     // initialise all client_socket[] to 0 so not checked
 
-    for (i = 0; i < max_clients; i++) {
+    for (i = 0; i < MAX_CLIENTS; i++) {
         client_socket[i] = 0;
     }
 
@@ -322,7 +351,7 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
         max_sd = server_socket;
 
         // add child sockets to set
-        for (i = 0; i < max_clients; i++) {
+        for (i = 0; i < MAX_CLIENTS; i++) {
             // socket descriptor
             sd = client_socket[i];
 
@@ -359,19 +388,12 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
                 new_socket, inet_ntoa(server_address.sin_addr),
                 ntohs(server_address.sin_port));
 
-            // send new connection greeting message
-            if (send(new_socket, message, strlen(message), 0) !=
-                (ssize_t)strlen(message)) {
-                perror("send");
-            }
-
-            puts("Welcome message sent successfully");
-
             // add new socket to array of sockets
-            for (i = 0; i < max_clients; i++) {
+            for (i = 0; i < MAX_CLIENTS; i++) {
                 // if position is empty
                 if (client_socket[i] == 0) {
                     client_socket[i] = new_socket;
+                    client_state[i] = init;
                     printf("Adding to list of sockets as %d\n", i);
 
                     break;
@@ -380,31 +402,79 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
         }
 
         // else its some IO operation on some other socket :)
-        for (i = 0; i < max_clients; i++) {
+        for (i = 0; i < MAX_CLIENTS; i++) {
             sd = client_socket[i];
 
             if (FD_ISSET(sd, &readfds)) {
                 // Check if it was for closing , and also read the incoming
                 // message
-                if ((valread = read(sd, buffer, 1024)) == 0) {
-                    // Somebody disconnected , get his details and print
-                    getpeername(sd, (struct sockaddr*)&server_address,
-                                (socklen_t*)&addrlen);
-                    printf("Host disconnected , ip %s , port %d \n",
-                           inet_ntoa(server_address.sin_addr),
-                           ntohs(server_address.sin_port));
+                char c[1];
+                char* buffer = malloc(sizeof(char));  // data buffer of 1K
+                size_t buffer_size = 1;
+                while (1) {
+                    valread = read(sd, c, 1);
+                    if (valread == 0) {
+                        // Somebody disconnected , get his details and print
+                        getpeername(sd, (struct sockaddr*)&server_address,
+                                    (socklen_t*)&addrlen);
+                        printf("Host disconnected , ip %s , port %d \n",
+                               inet_ntoa(server_address.sin_addr),
+                               ntohs(server_address.sin_port));
 
-                    // Close the socket and mark as 0 in list for reuse
-                    close(sd);
-                    client_socket[i] = 0;
-                }
+                        // Close the socket and mark as 0 in list for reuse
+                        closeTCPConnection(sd, &client_socket[i],
+                                           &client_state[i]);
+                        break;
+                    }
 
-                // Echo back the message that came in
-                else {
-                    // set the string terminating NULL byte on the end of the
-                    // data read
-                    buffer[valread] = '\0';
-                    send(sd, buffer, strlen(buffer), 0);
+                    // Echo back the message that came in
+                    else {
+                        buffer_size += 1;
+                        buffer = realloc(buffer, buffer_size * sizeof(char));
+                        buffer[buffer_size - 2] = *c;
+                        buffer[buffer_size - 1] = 0;
+                        if (*c != '\n') {
+                            continue;
+                        } else {
+                            int result = 0;
+                            switch (client_state[i]) {
+                                case init:
+                                    if (caseInsensitiveStrcmp(buffer,
+                                                              "HELLO\n")) {
+                                        closeTCPConnection(sd,
+                                                           &client_socket[i],
+                                                           &client_state[i]);
+                                    } else {
+                                        send(sd, "HELLO\n", 6, 0);
+                                        client_state[i] = established;
+                                    }
+                                    break;
+                                case established:
+                                    buffer[buffer_size - 2] = 0;
+                                    char header[7];
+                                    strncpy(header, buffer, 6);
+                                    if (caseInsensitiveStrcmp(header,
+                                                              "SOLVE ") ||
+                                        startParsing(buffer + 6, &result) ==
+                                            PARSE_FAIL) {
+                                        closeTCPConnection(sd,
+                                                           &client_socket[i],
+                                                           &client_state[i]);
+                                    } else if (result < 0) {
+                                        closeTCPConnection(sd,
+                                                           &client_socket[i],
+                                                           &client_state[i]);
+                                    } else {
+                                        bzero(buffer, buffer_size);
+                                        sprintf(buffer, "RESULT %d\n", result);
+                                        send(sd, buffer, strlen(buffer), 0);
+                                    }
+                                    break;
+                            }
+                        }
+                        free(buffer);
+                        break;
+                    }
                 }
             }
         }

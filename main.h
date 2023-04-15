@@ -18,5 +18,6 @@ int exprNonterminal(char**, int*);
 int operatorNonterminal(char**, char*);
 int spaceTerminal(char**);
 int queryNonterminal(char**, int*);
+int caseInsensitiveStrcmp(char*, char*);
 
 #endif

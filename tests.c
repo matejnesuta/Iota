@@ -83,5 +83,20 @@ void parserTests() {
             return_code = 1;
         }
     }
+
+    printf("\ncase insensitive strcmp:\n\n");
+
+    char caseInSensInputs[4][4] = {"ab", "Ab", "aB", "AB"};
+    char caseInSensDesc[4][4] = {"ab", "Ab", "aB", "AB"};
+
+    for (int i = 0; i < 4; i++) {
+        if (caseInsensitiveStrcmp(caseInSensInputs[i], "AB") != PARSE_FAIL) {
+            printf("\"%s == AB\": OK\n\n", caseInSensDesc[i]);
+        } else {
+            fprintf(stderr, "\"%s == AB\": FAIL\n\n", caseInSensDesc[i]);
+            return_code = 1;
+        }
+    }
+
     exit(return_code);
 }
