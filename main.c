@@ -239,7 +239,7 @@ void closeTCPConnection(int sd, int* socket, int* state) {
     *state = 0;
 }
 
-int udp_mode(struct sockaddr_in server_address, int server_socket) {
+int udp_mode(struct sockaddr_in server_address) {
     socklen_t clientlen;
     char buf[BUFSIZE];
     struct sockaddr_in client_address;
@@ -304,9 +304,27 @@ int udp_mode(struct sockaddr_in server_address, int server_socket) {
     }
 }
 
-int tcp_mode(struct sockaddr_in server_address, int server_socket) {
-    int addrlen, new_socket, client_socket[30], activity, i, valread, sd;
+char* tcp_buffer;
+int client_socket[MAX_CLIENTS];
+int server_socket = 0;
+
+static void sig_handler(int _) {
+    (void)_;
+    close(server_socket);
+    printf("Disconnecting all clients.\n");
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        send(client_socket[i], "BYE\n", 4, 0);
+        close(client_socket[i]);
+    }
+    free(tcp_buffer);
+    exit(0);
+}
+
+int tcp_mode(struct sockaddr_in server_address) {
+    int addrlen, new_socket, activity, i, valread, sd;
     int max_sd;
+
+    tcp_buffer = malloc(sizeof(char));  // data buffer of 1K
 
     int client_state[MAX_CLIENTS] = {0};
     enum State { uninit = 0, init = 1, established = 2 };
@@ -341,6 +359,9 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
     // accept the incoming connection
     addrlen = sizeof(server_address);
     puts("Waiting for connections ...");
+
+    struct sigaction sa = {.sa_handler = sig_handler};
+    sigaction(SIGINT, &sa, 0);
 
     while (1) {
         // clear the socket set
@@ -409,7 +430,6 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
                 // Check if it was for closing , and also read the incoming
                 // message
                 char c[1];
-                char* buffer = malloc(sizeof(char));  // data buffer of 1K
                 size_t buffer_size = 1;
                 while (1) {
                     valread = read(sd, c, 1);
@@ -430,16 +450,17 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
                     // Echo back the message that came in
                     else {
                         buffer_size += 1;
-                        buffer = realloc(buffer, buffer_size * sizeof(char));
-                        buffer[buffer_size - 2] = *c;
-                        buffer[buffer_size - 1] = 0;
+                        tcp_buffer =
+                            realloc(tcp_buffer, buffer_size * sizeof(char));
+                        tcp_buffer[buffer_size - 2] = *c;
+                        tcp_buffer[buffer_size - 1] = 0;
                         if (*c != '\n') {
                             continue;
                         } else {
                             int result = 0;
                             switch (client_state[i]) {
                                 case init:
-                                    if (caseInsensitiveStrcmp(buffer,
+                                    if (caseInsensitiveStrcmp(tcp_buffer,
                                                               "HELLO\n")) {
                                         closeTCPConnection(sd,
                                                            &client_socket[i],
@@ -450,12 +471,12 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
                                     }
                                     break;
                                 case established:
-                                    buffer[buffer_size - 2] = 0;
+                                    tcp_buffer[buffer_size - 2] = 0;
                                     char header[7];
-                                    strncpy(header, buffer, 6);
+                                    strncpy(header, tcp_buffer, 6);
                                     if (caseInsensitiveStrcmp(header,
                                                               "SOLVE ") ||
-                                        startParsing(buffer + 6, &result) ==
+                                        startParsing(tcp_buffer + 6, &result) ==
                                             PARSE_FAIL) {
                                         closeTCPConnection(sd,
                                                            &client_socket[i],
@@ -465,14 +486,16 @@ int tcp_mode(struct sockaddr_in server_address, int server_socket) {
                                                            &client_socket[i],
                                                            &client_state[i]);
                                     } else {
-                                        bzero(buffer, buffer_size);
-                                        sprintf(buffer, "RESULT %d\n", result);
-                                        send(sd, buffer, strlen(buffer), 0);
+                                        bzero(tcp_buffer, buffer_size);
+                                        sprintf(tcp_buffer, "RESULT %d\n",
+                                                result);
+                                        send(sd, tcp_buffer, strlen(tcp_buffer),
+                                             0);
                                     }
                                     break;
                             }
                         }
-                        free(buffer);
+                        // free(tcp_buffer);
                         break;
                     }
                 }
@@ -493,7 +516,6 @@ int main(int argc, char* argv[]) {
     int optval;
     argparse(argc, argv, &addr, &port_number, &server_mode);
     struct sockaddr_in server_address;
-    int server_socket = 0;
 
     /* adresa serveru, potrebuje pro prirazeni pozadovaneho portu */
     bzero((char*)&server_address, sizeof(server_address));
@@ -507,9 +529,9 @@ int main(int argc, char* argv[]) {
                sizeof(int));
 
     if (server_mode == 1) {
-        tcp_mode(server_address, server_socket);
+        tcp_mode(server_address);
     } else {
-        udp_mode(server_address, server_socket);
+        udp_mode(server_address);
     }
 
     return 0;

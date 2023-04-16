@@ -11,6 +11,8 @@ typedef struct {
     int value;
 } terminal;
 
+int server_socket;
+
 void errprint(char*);
 int startParsing(char*, int*);
 int evaluation(char, int, int, int*);
