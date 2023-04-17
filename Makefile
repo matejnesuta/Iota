@@ -1,8 +1,8 @@
 NAME        := ipkcpd
-SRCS        := main.c tests.c
-OBJS        := main.o 
+SRCS        := main.c parser.c tcp_mode.c udp_mode.c tests.c
+OBJS        := main.o parser.o tcp_mode.o udp_mode.o
 CC          :=	gcc	 
-CFLAGS      := -Wall -Wextra -Werror -pedantic -g -std=gnu99 
+CFLAGS      := -Wall -Wextra -pedantic -g -std=gnu99 
 RM          := rm -f
 MAKEFLAGS   += --no-print-directory
 

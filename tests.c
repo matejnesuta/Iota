@@ -1,21 +1,30 @@
-#include "tests.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "main.h"
 
-int testHandler(char* input) {
-    int result;
-    if (startParsing(input, &result)) {
+#include "main.h"
+#include "parser.h"
+#include "tcp_mode.h"
+#include "tests.h"
+
+// Par unit testu, ktere jsem si napsal predevsim na parser. Jsou spusteny
+// prikazem `make test`, ktery spusti podminenou kompilaci.
+
+// Parser znici puvodni vstupni string. Proto pouzivam tento wrapper, abych
+// neprisel o testovaci vstupni data a mohl je vytisknout na stdout.
+int testHandler(char* input, int* result) {
+    if (startParsing(input, result)) {
         return PARSE_FAIL;
     } else {
-        printf("The calculated result was: %d.\n", result);
         return PARSE_SUCCESS;
     }
 }
 
-void parserTests() {
+void unitTests() {
+    int result = 0;
     int return_code = 0;
     printf("\n//////// PARSER TESTS ////////\n");
+
+    // Vstupy, ktere by parserem nemely projit.
 
     printf("\ninvalid inputs:\n\n");
 
@@ -34,7 +43,7 @@ void parserTests() {
                                    "(*(/ 4 4))HELLO"};
 
     for (int i = 0; i < 13; i++) {
-        if (testHandler(invalid_inputs[i]) == PARSE_FAIL) {
+        if (testHandler(invalid_inputs[i], &result) == PARSE_FAIL) {
             printf("\"%s\": OK\n\n", invalid_inputs[i]);
         } else {
             fprintf(stderr, "\"%s\": FAIL\n\n", invalid_inputs[i]);
@@ -44,6 +53,12 @@ void parserTests() {
 
     printf("\nvalid inputs:\n\n");
 
+    // Vstupy, ktere by parserem mely projit. Vysledky nekterych vstupu mohou
+    // byt zaporne. Je to dane tim, ze parser samotny nekontroluje zaporna cisla
+    // ve vysledcich.
+    int results[30] = {4,   12, 5,  3,   24,  3,  11, 4,   2,  0,
+                       120, 5,  9,  5,   120, 10, 18, 20,  56, 0,
+                       70,  -2, 14, 108, 0,   7,  2,  120, 0,  -10};
     char valid_inputs[30][50] = {"(+ 2 2)",
                                  "(* 3 4)",
                                  "(/ 10 2)",
@@ -76,14 +91,25 @@ void parserTests() {
                                  "(- (/ 12 3) (* 2 3) (+ 7 1))"};
 
     for (int i = 0; i < 30; i++) {
-        if (testHandler(valid_inputs[i]) != PARSE_FAIL) {
-            printf("\"%s\": OK\n\n", valid_inputs[i]);
+        if (testHandler(valid_inputs[i], &result) != PARSE_FAIL) {
+            if (result == results[i]) {
+                printf(
+                    "\"%s\": OK (expected result: %d   actual result %d)\n\n",
+                    valid_inputs[i], results[i], result);
+            } else {
+                printf(
+                    "\"%s\": FAIL   (expected result: %d   actual result "
+                    "%d)\n\n",
+                    valid_inputs[i], results[i], result);
+            }
         } else {
-            fprintf(stderr, "\"%s\": FAIL\n\n", valid_inputs[i]);
+            fprintf(stderr, "\"%s\":PARSE FAIL\n\n", valid_inputs[i]);
             return_code = 1;
         }
     }
 
+    // Rychly check meho wrapperu okolu strcmp funkce, ktery pouzivam v TCP
+    // rezimu.
     printf("\ncase insensitive strcmp:\n\n");
 
     char caseInSensInputs[4][4] = {"ab", "Ab", "aB", "AB"};
