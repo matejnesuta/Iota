@@ -15,7 +15,7 @@ OPERATOR -> multiplication
 OPERATOR -> division
 EXP -> QUERY
 EXP -> number
-QUERY_END -> EXP END
+QUERY_END -> space EXP END
 QUERY_END -> right_bracket
 
 Pri parsovani rovnou dochazi i k vyhodnoceni vyrazu, ktery se dostava ven

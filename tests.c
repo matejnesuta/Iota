@@ -34,8 +34,8 @@ void unitTests() {
                                    "(+ 1)",
                                    "(   *    4   5   )     ",
                                    "(   +    (* 4 5)  (* 4 5) )     ",
-                                   "(   *    (* 4 5  (* 4 5) )     ",
-                                   "(   *    (* 45)  (* 4 5) )     ",
+                                   "(*(* 4 5(* 4 5))",
+                                   "(*(* 45)(* 4 5) )",
                                    "(*(/ 4 0) (* 4 5))",
                                    "(* -4 5)",
                                    "(* --4 5)",
@@ -94,11 +94,11 @@ void unitTests() {
         if (testHandler(valid_inputs[i], &result) != PARSE_FAIL) {
             if (result == results[i]) {
                 printf(
-                    "\"%s\": OK (expected result: %d   actual result %d)\n\n",
+                    "\"%s\": OK (expected result: %d   actual result: %d)\n\n",
                     valid_inputs[i], results[i], result);
             } else {
                 printf(
-                    "\"%s\": FAIL   (expected result: %d   actual result "
+                    "\"%s\": FAIL (expected result: %d   actual result: "
                     "%d)\n\n",
                     valid_inputs[i], results[i], result);
             }

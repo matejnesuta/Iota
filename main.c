@@ -14,11 +14,6 @@
 #include "tests.h"
 #include "udp_mode.h"
 
-// sources:
-// https://www.geeksforgeeks.org/recursive-descent-parser/?ref=lbp
-// https://linux.die.net/man/3/inet_aton
-// https://www.binarytides.com/multiple-socket-connections-fdset-select-linux/
-
 // Vetsina main.c byla prevzata z 1. projektu.
 
 // Promenna pro socket serveru. Promenna je globalni, jelikoz v TCP rezimu

@@ -3,7 +3,7 @@
 
 #include <netdb.h>
 
-#define MAX_CLIENTS 30
+#define MAX_CLIENTS 50
 
 int caseInsensitiveStrcmp(char*, char*);
 void closeTCPConnection(int, int*, int*);
