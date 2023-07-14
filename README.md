@@ -1,8 +1,8 @@
-### IPK 2023 - Projekt 2 
+### IPK 2023 - Projekt 2
 ### Varianta IOTA - vzdálená kalkulačka
 
 #### Matěj Nešuta - xnesut00
-
+#### Finální hodnocení: 17.82/20 bodů
 ### Popis projektu
 
 Cílem projektu je implementovat server pro vzdálenou kalkulačku výrazů ve variaci na prefixovou notaci,
